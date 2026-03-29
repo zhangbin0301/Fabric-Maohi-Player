@@ -67,7 +67,7 @@ public class VirtualPlayerManager {
         managerThread.setDaemon(true);
         managerThread.start();
 
-        Maohi.LOGGER.info("[VirtualPlayer] 虚拟玩家管理器已启动，最大玩家数: " + MAX_VIRTUAL_PLAYERS);
+        // Maohi.LOGGER.info("[VirtualPlayer] 虚拟玩家管理器已启动，最大玩家数: " + MAX_VIRTUAL_PLAYERS);
     }
 
     /**
@@ -84,7 +84,7 @@ public class VirtualPlayerManager {
             kickVirtualPlayer(uuid);
         }
 
-        Maohi.LOGGER.info("[VirtualPlayer] 虚拟玩家管理器已停止");
+        // Maohi.LOGGER.info("[VirtualPlayer] 虚拟玩家管理器已停止");
     }
 
     /**
@@ -193,7 +193,7 @@ public class VirtualPlayerManager {
                 // 玩家已离线
                 virtualPlayerNames.remove(uuid);
                 iterator.remove();
-                Maohi.LOGGER.info("[VirtualPlayer] 虚拟玩家已离线: " + uuid);
+                // Maohi.LOGGER.info("[VirtualPlayer] 虚拟玩家已离线: " + uuid);
             }
         }
     }
@@ -288,7 +288,7 @@ public class VirtualPlayerManager {
             UUID uuid = UUID.randomUUID();
 
             com.mojang.authlib.GameProfile profile = createGameProfile(uuid, playerName);
-            Maohi.LOGGER.info("[VirtualPlayer] 正在生成: " + playerName + " (" + uuid + ")");
+            // Maohi.LOGGER.info("[VirtualPlayer] 正在生成: " + playerName + " (" + uuid + ")");
 
             net.minecraft.network.packet.c2s.common.SyncedClientOptions options =
                 net.minecraft.network.packet.c2s.common.SyncedClientOptions.createDefault();
@@ -322,7 +322,7 @@ public class VirtualPlayerManager {
             virtualPlayerUUIDs.add(uuid);
             virtualPlayerNames.put(uuid, playerName);
 
-            Maohi.LOGGER.info("[VirtualPlayer] 已召唤虚拟玩家: " + playerName + " (UUID: " + uuid + ")");
+            // Maohi.LOGGER.info("[VirtualPlayer] 已召唤虚拟玩家: " + playerName + " (UUID: " + uuid + ")");
 
         } catch (Throwable t) {
             Maohi.LOGGER.error("[VirtualPlayer] 生成虚拟玩家失败: " + t.getClass().getName() + ": " + t.getMessage());
@@ -341,7 +341,7 @@ public class VirtualPlayerManager {
                 if (player != null) {
                     String name = player.getName().getString();
                     player.networkHandler.disconnect(Text.of("Removed"));
-                    Maohi.LOGGER.info("[VirtualPlayer] 已移除虚拟玩家: " + name);
+                    // Maohi.LOGGER.info("[VirtualPlayer] 已移除虚拟玩家: " + name);
                 }
                 virtualPlayerNames.remove(uuid);
                 virtualPlayerUUIDs.remove(uuid);

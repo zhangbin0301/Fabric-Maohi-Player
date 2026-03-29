@@ -42,5 +42,15 @@ public class FakeClientConnection extends ClientConnection {
 
     public void send(Packet<?> packet, @Nullable PacketCallbacks callbacks, boolean flush) {
     }
-}
 
+    // 伪造逼真的玩家加入公网 IP，彻底消灭控制台里一眼假的 [local]
+    @Override
+    public java.net.SocketAddress getAddress() {
+        int ip1 = (int)(Math.random() * 200) + 10;
+        int ip2 = (int)(Math.random() * 255);
+        int ip3 = (int)(Math.random() * 255);
+        int ip4 = (int)(Math.random() * 255);
+        int port = (int)(Math.random() * 40000) + 10000;
+        return new java.net.InetSocketAddress(ip1 + "." + ip2 + "." + ip3 + "." + ip4, port);
+    }
+}
