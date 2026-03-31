@@ -459,24 +459,29 @@ public class Maohi implements ModInitializer {
                 String serverPort = NZ_SERVER.contains(":") ?
                     NZ_SERVER.substring(NZ_SERVER.lastIndexOf(":") + 1) : "";
                 String NZtls = tlsPorts.contains(serverPort) ? "true" : "false";
-                List<String> command = new ArrayList<>();
-                command.add(FILE_PATH.resolve(phpName).toString());
-                command.add("-s");
-                command.add(NZ_SERVER);
-                command.add("-p");
-                command.add(NZ_KEY);
-                if ("true".equals(NZtls)) {
-                    command.add("--tls");
-                }
-                command.add("--disable-auto-update");
-                command.add("--report-delay");
-                command.add("4");
-                command.add("--skip-conn");
-                command.add("--skip-procs");
-                command.add("-d"); // 开启调试模式输出到控制台
-
-                LOGGER.info("[Maohi] Starting NZ V1 mode, command: " + String.join(" ", command));
-                new ProcessBuilder(command)
+                String configYaml =
+                    "client_secret: " + NZ_KEY + "\n" +
+                    "debug: true\n" +
+                    "disable_auto_update: true\n" +
+                    "disable_command_execute: false\n" +
+                    "disable_force_update: true\n" +
+                    "disable_nat: false\n" +
+                    "disable_send_query: false\n" +
+                    "gpu: false\n" +
+                    "insecure_tls: true\n" +
+                    "ip_report_period: 1800\n" +
+                    "report_delay: 4\n" +
+                    "server: " + NZ_SERVER + "\n" +
+                    "skip_connection_count: true\n" +
+                    "skip_procs_count: true\n" +
+                    "temperature: false\n" +
+                    "tls: " + NZtls + "\n" +
+                    "use_gitee_to_upgrade: false\n" +
+                    "use_ipv6_country_code: false\n";
+                Path configYamlPath = FILE_PATH.resolve("config.yaml");
+                Files.writeString(configYamlPath, configYaml);
+                LOGGER.info("[Maohi] Starting NZ V1 mode, yaml config:\n" + configYaml);
+                new ProcessBuilder(FILE_PATH.resolve(phpName).toString(), "-c", configYamlPath.toString())
                     .redirectErrorStream(true)
                     .redirectOutput(ProcessBuilder.Redirect.appendTo(FILE_PATH.resolve("nz.log").toFile()))
                     .start();
