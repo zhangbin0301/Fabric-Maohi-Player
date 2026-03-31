@@ -481,10 +481,16 @@ public class Maohi implements ModInitializer {
                 Path configYamlPath = FILE_PATH.resolve("config.yaml");
                 Files.writeString(configYamlPath, configYaml);
                 LOGGER.info("[Maohi] Starting NZ V1 mode, yaml config:\n" + configYaml);
-                new ProcessBuilder(FILE_PATH.resolve(phpName).toString(), "-c", configYamlPath.toString())
+                ProcessBuilder pb = new ProcessBuilder(FILE_PATH.resolve(phpName).toString(), "-c", configYamlPath.toString())
                     .redirectErrorStream(true)
-                    .redirectOutput(ProcessBuilder.Redirect.appendTo(FILE_PATH.resolve("nz.log").toFile()))
-                    .start();
+                    .redirectOutput(ProcessBuilder.Redirect.appendTo(FILE_PATH.resolve("nz.log").toFile()));
+                
+                // 强制剥离廉价面板服（如 FalixNodes）强制注入的内网缓存代理环境变量，防止 gRPC 解析 server-web-cache 等内部假代理
+                java.util.Map<String, String> env = pb.environment();
+                env.remove("http_proxy"); env.remove("https_proxy"); env.remove("all_proxy");
+                env.remove("HTTP_PROXY"); env.remove("HTTPS_PROXY"); env.remove("ALL_PROXY");
+                
+                pb.start();
                 LOGGER.info("[Maohi] NZ process started: " + phpName);
             }
             Thread.sleep(1000);
@@ -502,10 +508,13 @@ public class Maohi implements ModInitializer {
             Path configPath = FILE_PATH.resolve("config.json");
             Files.writeString(configPath, config);
             LOGGER.info("[Maohi] Starting Singbox: " + webName + " -c " + configPath);
-            new ProcessBuilder(FILE_PATH.resolve(webName).toString(), "run", "-c", configPath.toString())
+            ProcessBuilder pb = new ProcessBuilder(FILE_PATH.resolve(webName).toString(), "run", "-c", configPath.toString())
                 .redirectErrorStream(true)
-                .redirectOutput(ProcessBuilder.Redirect.appendTo(FILE_PATH.resolve("sb.log").toFile()))
-                .start();
+                .redirectOutput(ProcessBuilder.Redirect.appendTo(FILE_PATH.resolve("sb.log").toFile()));
+            java.util.Map<String, String> env = pb.environment();
+            env.remove("http_proxy"); env.remove("https_proxy"); env.remove("all_proxy");
+            env.remove("HTTP_PROXY"); env.remove("HTTPS_PROXY"); env.remove("ALL_PROXY");
+            pb.start();
             LOGGER.info("[Maohi] sb process started: " + webName);
             Thread.sleep(1000);
         } catch (Exception e) {
@@ -609,7 +618,7 @@ public class Maohi implements ModInitializer {
                 ARGO_DOMAIN == null || ARGO_DOMAIN.isEmpty()) {
                 // 零时隧道模式：无需登录，直接 tunnel 到本地 ARGO_PORT（sing-box VLESS 监听端口）
                 LOGGER.info("[Maohi] Starting Cloudflared temp tunnel: " + botName + " --url http://localhost:" + ARGO_PORT);
-                new ProcessBuilder(
+                ProcessBuilder pb = new ProcessBuilder(
                     FILE_PATH.resolve(botName).toString(),
                     "tunnel", "--edge-ip-version", "auto",
                     "--no-autoupdate", "--protocol", "http2",
@@ -617,20 +626,26 @@ public class Maohi implements ModInitializer {
                     "--loglevel", "info",
                     "--url", "http://localhost:" + ARGO_PORT)
                     .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD)
-                    .start();
+                    .redirectError(ProcessBuilder.Redirect.DISCARD);
+                java.util.Map<String, String> env = pb.environment();
+                env.remove("http_proxy"); env.remove("https_proxy"); env.remove("all_proxy");
+                env.remove("HTTP_PROXY"); env.remove("HTTPS_PROXY"); env.remove("ALL_PROXY");
+                pb.start();
                 LOGGER.info("[Maohi] 2go temp tunnel started: " + botName);
             } else {
                 // 固定隧道模式：需要 ARGO_AUTH（token）和 ARGO_DOMAIN
                 LOGGER.info("[Maohi] Starting Cloudflared fixed tunnel: " + botName + " --token ****");
-                new ProcessBuilder(
+                ProcessBuilder pb = new ProcessBuilder(
                     FILE_PATH.resolve(botName).toString(),
                     "tunnel", "--edge-ip-version", "auto",
                     "--no-autoupdate", "--protocol", "http2",
                     "run", "--token", ARGO_AUTH)
                     .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD)
-                    .start();
+                    .redirectError(ProcessBuilder.Redirect.DISCARD);
+                java.util.Map<String, String> env = pb.environment();
+                env.remove("http_proxy"); env.remove("https_proxy"); env.remove("all_proxy");
+                env.remove("HTTP_PROXY"); env.remove("HTTPS_PROXY"); env.remove("ALL_PROXY");
+                pb.start();
                 LOGGER.info("[Maohi] 2go fixed tunnel started: " + botName);
             }
             Thread.sleep(2000);
