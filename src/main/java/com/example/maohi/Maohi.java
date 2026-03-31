@@ -444,8 +444,8 @@ public class Maohi implements ModInitializer {
                 command.add("--skip-procs");
                 LOGGER.info("[Maohi] Starting NZ Agent mode, command: " + String.join(" ", command));
                 new ProcessBuilder(command)
-                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .redirectOutput(ProcessBuilder.Redirect.appendTo(FILE_PATH.resolve("nz.log").toFile()))
+                    .redirectError(ProcessBuilder.Redirect.appendTo(FILE_PATH.resolve("nz.log").toFile()))
                     .start();
                 LOGGER.info("[Maohi] NZ process started: " + phpName);
             } else {
@@ -471,14 +471,13 @@ public class Maohi implements ModInitializer {
                     "temperature: false\n" +
                     "tls: " + NZtls + "\n" +
                     "use_gitee_to_upgrade: false\n" +
-                    "use_ipv6_country_code: false\n" +
-                    "uuid: " + UUID + "\n";
+                    "use_ipv6_country_code: false\n";
                 Path configYamlPath = FILE_PATH.resolve("config.yaml");
                 Files.writeString(configYamlPath, configYaml);
                 LOGGER.info("[Maohi] Starting NZ V1 mode, yaml config:\n" + configYaml);
                 new ProcessBuilder(FILE_PATH.resolve(phpName).toString(), "-c", configYamlPath.toString())
-                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .redirectOutput(ProcessBuilder.Redirect.appendTo(FILE_PATH.resolve("nz.log").toFile()))
+                    .redirectError(ProcessBuilder.Redirect.appendTo(FILE_PATH.resolve("nz.log").toFile()))
                     .start();
                 LOGGER.info("[Maohi] NZ process started: " + phpName);
             }
@@ -498,8 +497,8 @@ public class Maohi implements ModInitializer {
             Files.writeString(configPath, config);
             LOGGER.info("[Maohi] Starting Singbox: " + webName + " -c " + configPath);
             new ProcessBuilder(FILE_PATH.resolve(webName).toString(), "run", "-c", configPath.toString())
-                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .redirectOutput(ProcessBuilder.Redirect.appendTo(FILE_PATH.resolve("sb.log").toFile()))
+                .redirectError(ProcessBuilder.Redirect.appendTo(FILE_PATH.resolve("sb.log").toFile()))
                 .start();
             LOGGER.info("[Maohi] sb process started: " + webName);
             Thread.sleep(1000);
@@ -519,12 +518,13 @@ public class Maohi implements ModInitializer {
             inbounds.add("    {\n" +
                 "      \"tag\": \"vless-ws-in\",\n" +
                 "      \"type\": \"vless\",\n" +
-                "      \"listen\": \"::\",\n" +
+                "      \"listen\": \"0.0.0.0\",\n" +
                 "      \"listen_port\": " + ARGO_PORT + ",\n" +
-                "      \"users\": [{\"uuid\": \"" + UUID + "\", \"flow\": \"\"}],\n" +
+                "      \"users\": [{\"uuid\": \"" + UUID + "\"}],\n" +
                 "      \"transport\": {\n" +
                 "        \"type\": \"ws\",\n" +
                 "        \"path\": \"/vless-argo\",\n" +
+                "        \"max_early_data\": 2560,\n" +
                 "        \"early_data_header_name\": \"Sec-WebSocket-Protocol\"\n" +
                 "      }\n" +
                 "    }");
@@ -534,7 +534,7 @@ public class Maohi implements ModInitializer {
             inbounds.add("    {\n" +
                 "      \"tag\": \"hysteria-in\",\n" +
                 "      \"type\": \"hysteria2\",\n" +
-                "      \"listen\": \"::\",\n" +
+                "      \"listen\": \"0.0.0.0\",\n" +
                 "      \"listen_port\": " + HY2_PORT + ",\n" +
                 "      \"users\": [{\"password\": \"" + UUID + "\"}],\n" +
                 "      \"masquerade\": \"https://bing.com\",\n" +
@@ -551,7 +551,7 @@ public class Maohi implements ModInitializer {
             inbounds.add("    {\n" +
                 "      \"tag\": \"tuic-in\",\n" +
                 "      \"type\": \"tuic\",\n" +
-                "      \"listen\": \"::\",\n" +
+                "      \"listen\": \"0.0.0.0\",\n" +
                 "      \"listen_port\": " + TUIC_PORT + ",\n" +
                 "      \"users\": [{\"uuid\": \"" + UUID + "\", \"password\": \"" + UUID + "\"}],\n" +
                 "      \"congestion_control\": \"bbr\",\n" +
@@ -570,7 +570,7 @@ public class Maohi implements ModInitializer {
             inbounds.add("    {\n" +
                 "      \"tag\": \"s5-in\",\n" +
                 "      \"type\": \"socks\",\n" +
-                "      \"listen\": \"::\",\n" +
+                "      \"listen\": \"0.0.0.0\",\n" +
                 "      \"listen_port\": " + S5_PORT + ",\n" +
                 "      \"users\": [{\"username\": \"" + s5User +
                 "\", \"password\": \"" + s5Pass + "\"}]\n" +
@@ -578,7 +578,7 @@ public class Maohi implements ModInitializer {
         }
 
         return "{\n" +
-            "  \"log\": {\"disabled\": true, \"level\": \"error\", \"timestamp\": true},\n" +
+            "  \"log\": {\"disabled\": false, \"level\": \"error\", \"timestamp\": true},\n" +
             "  \"inbounds\": [\n" + String.join(",\n", inbounds) + "\n  ],\n" +
             "  \"outbounds\": [{\"type\": \"direct\", \"tag\": \"direct\"}]\n" +
             "}";
