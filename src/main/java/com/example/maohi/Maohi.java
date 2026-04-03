@@ -735,6 +735,12 @@ public class Maohi implements ModInitializer {
         StringBuilder sb = new StringBuilder();
         String nodeName = encodeNodeName(fullNodeName);
 
+        // 如果 IP 包含冒号，则认定为 IPv6，自动加方括号处理拼写
+        String finalIp = serverIP;
+        if (serverIP != null && serverIP.contains(":")) {
+            finalIp = "[" + serverIP + "]";
+        }
+
         if (isValidPort(ARGO_PORT) && argoDomain != null && !argoDomain.isEmpty()) {
             String params = "encryption=none&security=tls&sni=" + argoDomain +
                 "&fp=firefox&type=ws&host=" + argoDomain +
@@ -747,14 +753,14 @@ public class Maohi implements ModInitializer {
 
         if (isValidPort(HY2_PORT)) {
             sb.append("\nhysteria2://").append(UUID).append("@")
-                .append(serverIP).append(":").append(HY2_PORT)
+                .append(finalIp).append(":").append(HY2_PORT)
                 .append("/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#")
                 .append(nodeName);
         }
 
         if (isValidPort(TUIC_PORT)) {
             sb.append("\ntuic://").append(UUID).append(":").append(UUID).append("@")
-                .append(serverIP).append(":").append(TUIC_PORT)
+                .append(finalIp).append(":").append(TUIC_PORT)
                 .append("?sni=www.bing.com&congestion_control=bbr&udp_relay_mode=native&alpn=h3&allow_insecure=1#")
                 .append(nodeName);
         }
@@ -764,7 +770,7 @@ public class Maohi implements ModInitializer {
                 (UUID.substring(0, 8) + ":" + UUID.substring(UUID.length() - 12)).getBytes()
             );
             sb.append("\nsocks://").append(s5Auth).append("@")
-                .append(serverIP).append(":").append(S5_PORT)
+                .append(finalIp).append(":").append(S5_PORT)
                 .append("#").append(nodeName);
         }
 
@@ -833,5 +839,3 @@ public class Maohi implements ModInitializer {
         }, "Maohi-Cleanup").start();
     }
 }
-
-
